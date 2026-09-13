@@ -167,22 +167,48 @@ function renderCustomers() {
   const search = $("#customer-search");
   if (!search) return;
   const needle = search.value.trim().toLocaleLowerCase("de");
-  const matching = customers.filter((customer) => [customer.name, customer.contact, customer.street, customer.city, customer.email, customer.phone].join(" ").toLocaleLowerCase("de").includes(needle));
+  const matching = customers.filter((customer) => [customerCompany(customer), ...customerContacts(customer), customer.street, customer.city, customer.email, customer.phone].join(" ").toLocaleLowerCase("de").includes(needle));
   $("#customer-result-summary").textContent = `${matching.length} ${matching.length === 1 ? "Kunde" : "Kunden"} im Kundenstamm`;
   $("#customer-list").innerHTML = matching.map(customerRow).join("") || emptyState(needle ? "Kein Kunde gefunden." : "Noch keine Kunden angelegt.");
 }
 
 function customerRow(customer) {
-  const secondary = [customer.contact, customer.city].filter(Boolean).join(" · ") || "Keine Kontaktdaten";
+  const contacts = customerContacts(customer);
+  const secondary = [contacts.join(", "), customer.city].filter(Boolean).join(" · ") || "Keine Kontaktdaten";
   return `<button class="list-row list-row--button" type="button" data-action="customer-detail" data-id="${customer.id}">
     <span class="row-icon row-icon--customer" aria-hidden="true">K</span>
-    <span class="row-main"><span class="row-title">${escapeHtml(customer.name)}</span><span class="row-subtitle">${escapeHtml(secondary)}</span></span>
+    <span class="row-main"><span class="row-title">${escapeHtml(customerCompany(customer))}</span><span class="row-subtitle">${escapeHtml(secondary)}</span></span>
     <span class="row-side"><span class="row-date">${escapeHtml(customer.phone || customer.email || "Stammdaten")}</span></span>
   </button>`;
 }
 
+function customerCompany(customer) {
+  return String(customer?.company || customer?.name || "").trim();
+}
+
+function customerContacts(customer) {
+  const contacts = Array.isArray(customer?.contacts) ? customer.contacts : [customer?.contact];
+  return [...new Set(contacts.map((contact) => String(contact || "").trim()).filter(Boolean))];
+}
+
 function customerOptions() {
-  return `<datalist id="customer-options">${customers.map((customer) => `<option value="${escapeHtml(customer.name)}">${escapeHtml([customer.city, customer.contact].filter(Boolean).join(" · "))}</option>`).join("")}</datalist>`;
+  return `<datalist id="customer-options">${customers.map((customer) => `<option value="${escapeHtml(customerCompany(customer))}">${escapeHtml([customer.city, customerContacts(customer).join(", ")].filter(Boolean).join(" · "))}</option>`).join("")}</datalist>`;
+}
+
+function protocolContactOptions(company, selected = "") {
+  const customer = customers.find((entry) => customerCompany(entry).toLocaleLowerCase("de") === String(company || "").trim().toLocaleLowerCase("de"));
+  const contacts = customerContacts(customer);
+  return `<option value="">Keinen Ansprechpartner auswählen</option>${contacts.map((contact) => `<option value="${escapeHtml(contact)}"${contact === selected ? " selected" : ""}>${escapeHtml(contact)}</option>`).join("")}`;
+}
+
+function bindProtocolCustomerSelection(company, selected = "") {
+  const customerInput = $("[name='customer']", $("#dialog-form"));
+  const contactSelect = $("[name='customer-contact']", $("#dialog-form"));
+  if (!customerInput || !contactSelect) return;
+  const update = () => { contactSelect.innerHTML = protocolContactOptions(customerInput.value, contactSelect.value); };
+  contactSelect.innerHTML = protocolContactOptions(company, selected);
+  customerInput.addEventListener("input", update);
+  customerInput.addEventListener("change", update);
 }
 
 async function loadActivities() {
@@ -244,9 +270,13 @@ function renderDashboard() {
 
 function protocolRow(protocol) {
   const status = protocolStatus(protocol);
+  const masterCustomer = protocolCustomer(protocol);
+  const company = protocol.customer || customerCompany(masterCustomer) || "Ohne Auftraggeber";
+  const contact = protocol.customerContact || customerContacts(masterCustomer)[0] || "";
+  const customerLine = [company, contact].filter(Boolean).join(" · ");
   return `<button class="list-row list-row--button" type="button" data-action="protocol-detail" data-id="${escapeHtml(protocol.id)}">
     <span class="row-icon" aria-hidden="true">AP</span>
-    <span class="row-main"><span class="row-title">${escapeHtml(protocol.project || "Ohne Baustelle")}</span><span class="row-subtitle">${escapeHtml(protocol.location || protocol.customer || "Ohne Ort")} · ${protocolPeriod(protocol)}</span></span>
+    <span class="row-main"><span class="row-title">${escapeHtml(protocol.project || "Ohne Baustelle")}</span><span class="row-subtitle row-subtitle--customer">${escapeHtml(customerLine)}</span><span class="row-context">${escapeHtml(protocol.location || "Ohne Ort")} · ${protocolPeriod(protocol)}</span></span>
     <span class="row-side"><span class="row-amount">${hours(protocol.hours)}</span><span class="status status--${status.className}">${status.label}</span></span>
   </button>`;
 }
@@ -621,8 +651,26 @@ function openAppointmentDetail(id) {
   });
 }
 
+function openDeleteConfirmation({ title, message, action, id }) {
+  showDialog({
+    eyebrow: "Löschen bestätigen",
+    title,
+    content: `<div class="dialog-body"><p class="local-note">${escapeHtml(message)}</p><div class="dialog-actions"><button class="button" type="submit" value="cancel" formnovalidate>Abbrechen</button><button class="button button--danger" type="button" data-dialog-action="${escapeHtml(action)}" data-id="${escapeHtml(id)}">Endgültig löschen</button></div></div>`
+  });
+}
+
 function deleteAppointment(id) {
-  if (!confirm("Diesen Termin wirklich löschen?")) return;
+  const appointment = (data.appointments || []).find((entry) => entry.id === id);
+  if (!appointment) return showToast("Termin nicht gefunden");
+  openDeleteConfirmation({
+    title: appointment.title || "Termin löschen",
+    message: "Soll dieser Termin endgültig gelöscht werden?",
+    action: "confirm-delete-appointment",
+    id
+  });
+}
+
+function confirmDeleteAppointment(id) {
   data.appointments = (data.appointments || []).filter((appointment) => appointment.id !== id);
   closeDialog();
   saveData("Termin gelöscht");
@@ -643,7 +691,8 @@ function openNewProtocol(date = today(), appointment = null) {
     content: `<div class="dialog-body"><div class="form-grid">
       <input type="hidden" name="source-appointment" value="${escapeHtml(appointment?.id || "")}">
       <label class="form-field">Baustelle / Projekt<input name="project" value="${initialTitle}" placeholder="z. B. Pflege Gewann Tälesteich" required autofocus></label>
-      <label class="form-field">Kunde<input name="customer" list="customer-options" value="${initial("customer")}" placeholder="Kundenname oder Auftraggeber"></label>${customerOptions()}
+      <label class="form-field">Firma / Auftraggeber<input name="customer" list="customer-options" value="${initial("customer")}" placeholder="Firma aus dem Kundenstamm"></label>${customerOptions()}
+      <label class="form-field">Ansprechpartner<select name="customer-contact" aria-label="Ansprechpartner auswählen"></select></label>
       <label class="form-field">Ort / Baustelle<input name="location" value="${initial("location")}" placeholder="Ort oder Bereich" required></label>
       <div class="form-two-columns"><label class="form-field">Von<input name="date-from" type="date" value="${dateFrom}" required></label><label class="form-field">Bis<input name="date-to" type="date" value="${dateTo}" required></label></div>
       <label class="form-field">Mitarbeiter<input name="team" value="${initial("team")}" placeholder="z. B. Rick Schuler, Max Mustermann"></label>
@@ -653,6 +702,7 @@ function openNewProtocol(date = today(), appointment = null) {
       <div class="photo-preview" id="photo-preview" aria-live="polite"></div>
     </div><div class="dialog-actions"><button class="button" type="submit" value="cancel" formnovalidate>Abbrechen</button><button class="button button--primary" type="button" data-dialog-action="save-protocol">Als Entwurf speichern</button></div></div>`
   });
+  bindProtocolCustomerSelection(appointment?.customer || "", appointment?.customerContact || "");
   bindPhotoInput();
   bindPositionList();
 }
@@ -670,7 +720,8 @@ function openProtocolEditor(id) {
     content: [
       '<div class="dialog-body"><p class="local-note">Die Stammdaten und bisherigen Positionen bleiben erhalten. Ergänze nur neue Tage, Stunden, Positionen oder Fotos.</p><div class="form-grid">',
       '<label class="form-field">Baustelle / Projekt<input name="project" value="' + value("project") + '" required autofocus></label>',
-      '<label class="form-field">Kunde<input name="customer" list="customer-options" value="' + value("customer") + '" placeholder="Kundenname oder Auftraggeber"></label>', customerOptions(),
+      '<label class="form-field">Firma / Auftraggeber<input name="customer" list="customer-options" value="' + value("customer") + '" placeholder="Firma aus dem Kundenstamm"></label>', customerOptions(),
+      '<label class="form-field">Ansprechpartner<select name="customer-contact" aria-label="Ansprechpartner auswählen"></select></label>',
       '<label class="form-field">Ort / Baustelle<input name="location" value="' + value("location") + '" required></label>',
       '<div class="form-two-columns"><label class="form-field">Von<input name="date-from" type="date" value="' + escapeHtml(protocol.dateFrom || protocol.date || today()) + '" required></label><label class="form-field">Bis<input name="date-to" type="date" value="' + escapeHtml(protocol.dateTo || protocol.date || today()) + '" required></label></div>',
       '<label class="form-field">Mitarbeiter<input name="team" value="' + value("team") + '"></label>',
@@ -681,6 +732,7 @@ function openProtocolEditor(id) {
       '</div><div class="dialog-actions"><button class="button" type="submit" value="cancel" formnovalidate>Abbrechen</button><button class="button button--primary" type="button" data-dialog-action="save-protocol" data-id="', escapeHtml(protocol.id), '">Änderungen speichern</button></div></div>'
     ].join("")
   });
+  bindProtocolCustomerSelection(protocol.customer, protocol.customerContact || "");
   bindPhotoInput();
   bindPositionList();
   renderPhotoPreview();
@@ -690,16 +742,43 @@ function openNewCustomer() {
   openCustomerEditor();
 }
 
+function customerContactEditorMarkup(index, contact = "") {
+  return `<div class="customer-contact-editor" data-customer-contact><label class="form-field">Ansprechpartner ${index}<input name="customer-contact-entry" value="${escapeHtml(contact)}" placeholder="Vor- und Nachname"></label><button class="text-button" type="button" data-action="remove-customer-contact">Entfernen</button></div>`;
+}
+
+function addCustomerContact() {
+  const list = $("#customer-contact-list");
+  if (!list) return;
+  list.insertAdjacentHTML("beforeend", customerContactEditorMarkup(list.querySelectorAll("[data-customer-contact]").length + 1));
+}
+
+function removeCustomerContact(row) {
+  const list = $("#customer-contact-list");
+  if (!list || !row) return;
+  if (list.querySelectorAll("[data-customer-contact]").length === 1) {
+    const input = $("input", row);
+    if (input) input.value = "";
+    return;
+  }
+  row.remove();
+  $$("[data-customer-contact]", list).forEach((entry, index) => {
+    const label = $("label", entry);
+    if (label) label.firstChild.textContent = `Ansprechpartner ${index + 1}`;
+  });
+}
+
 function openCustomerEditor(id) {
   const customer = id == null ? null : customers.find((entry) => Number(entry.id) === Number(id));
   if (id != null && !customer) return showToast("Kunde nicht gefunden");
   const value = (field) => escapeHtml(customer?.[field] || "");
+  const contacts = customerContacts(customer);
+  const contactEditors = (contacts.length ? contacts : [""]).map((contact, index) => customerContactEditorMarkup(index + 1, contact)).join("");
   showDialog({
     eyebrow: customer ? "Kundenstamm bearbeiten" : "Neuer Kunde",
-    title: customer ? customer.name : "Kunden anlegen",
+    title: customer ? customerCompany(customer) : "Kunden anlegen",
     content: `<div class="dialog-body"><div class="form-grid">
-      <label class="form-field">Firmen- / Kundenname<input name="customer-name" value="${value("name")}" placeholder="Name des Kunden" required autofocus></label>
-      <label class="form-field">Ansprechpartner<input name="customer-contact" value="${value("contact")}" placeholder="Vor- und Nachname"></label>
+      <label class="form-field">Firma<input name="customer-company" value="${escapeHtml(customerCompany(customer))}" placeholder="Firmenname" required autofocus></label>
+      <section class="customer-contact-section"><div class="section-heading"><h3>Ansprechpartner</h3><button type="button" class="text-button" data-action="add-customer-contact">+ Ansprechpartner</button></div><div id="customer-contact-list" class="customer-contact-list">${contactEditors}</div></section>
       <label class="form-field">Straße / Hausnummer<input name="customer-street" value="${value("street")}" placeholder="Straße und Hausnummer"></label>
       <div class="form-two-columns"><label class="form-field">PLZ<input name="customer-postal-code" value="${value("postalCode")}" inputmode="numeric" placeholder="PLZ"></label><label class="form-field">Ort<input name="customer-city" value="${value("city")}" placeholder="Ort"></label></div>
       <label class="form-field">Telefon<input name="customer-phone" value="${value("phone")}" type="tel" placeholder="Telefonnummer"></label>
@@ -712,8 +791,10 @@ async function saveCustomer(id) {
   const form = $("#dialog-form");
   if (!form.reportValidity()) return;
   const values = new FormData(form);
+  const company = values.get("customer-company").trim();
+  const contacts = [...new Set(values.getAll("customer-contact-entry").map((contact) => contact.trim()).filter(Boolean))];
   const customer = {
-    name: values.get("customer-name").trim(), contact: values.get("customer-contact").trim(), street: values.get("customer-street").trim(),
+    company, name: company, contacts, contact: contacts[0] || "", street: values.get("customer-street").trim(),
     postalCode: values.get("customer-postal-code").trim(), city: values.get("customer-city").trim(), phone: values.get("customer-phone").trim(),
     email: values.get("customer-email").trim(), updatedAt: new Date().toISOString()
   };
@@ -729,7 +810,17 @@ async function saveCustomer(id) {
 }
 
 async function deleteCustomer(id) {
-  if (!confirm("Diesen Kunden wirklich aus dem Kundenstamm löschen?")) return;
+  const customer = customers.find((entry) => Number(entry.id) === Number(id));
+  if (!customer) return showToast("Kunde nicht gefunden");
+  openDeleteConfirmation({
+    title: customerCompany(customer) || "Kunde löschen",
+    message: "Soll dieser Kunde endgültig aus dem Kundenstamm gelöscht werden? Vorhandene Arbeitsprotokolle bleiben erhalten.",
+    action: "confirm-delete-customer",
+    id
+  });
+}
+
+async function confirmDeleteCustomer(id) {
   try {
     await CustomerDb.remove(id);
     closeDialog();
@@ -779,7 +870,17 @@ async function saveActivity(id) {
 }
 
 async function deleteActivity(id) {
-  if (!confirm("Diese Tätigkeit wirklich aus dem Stamm löschen?")) return;
+  const activity = activities.find((entry) => Number(entry.id) === Number(id));
+  if (!activity) return showToast("Tätigkeit nicht gefunden");
+  openDeleteConfirmation({
+    title: activity.name || "Tätigkeit löschen",
+    message: "Soll diese Tätigkeit endgültig aus dem Tätigkeitsstamm gelöscht werden? Vorhandene Arbeitsprotokolle bleiben erhalten.",
+    action: "confirm-delete-activity",
+    id
+  });
+}
+
+async function confirmDeleteActivity(id) {
   try {
     await ActivityDb.remove(id);
     closeDialog();
@@ -802,7 +903,7 @@ function openProtocolDetail(id) {
     eyebrow: protocolPeriod(protocol),
     title: protocol.project || "Arbeitsprotokoll",
     content: `<div class="dialog-body"><span class="status status--${status.className}">${status.label}</span><p class="detail-amount">${hours(protocol.hours)}</p>
-      <div class="detail-grid"><div><span>Auftraggeber</span><strong>${escapeHtml(protocol.customer || "—")}</strong></div><div><span>Ort</span><strong>${escapeHtml(protocol.location || "—")}</strong></div><div><span>Zeitraum</span><strong>${protocolPeriod(protocol)}</strong></div><div><span>Mitarbeiter</span><strong>${escapeHtml(protocol.team || "—")}</strong></div></div>
+      <div class="detail-grid"><div><span>Auftraggeber</span><strong>${escapeHtml(protocol.customer || "—")}</strong>${protocol.customerContact ? `<small>${escapeHtml(protocol.customerContact)}</small>` : ""}</div><div><span>Ort</span><strong>${escapeHtml(protocol.location || "—")}</strong></div><div><span>Zeitraum</span><strong>${protocolPeriod(protocol)}</strong></div><div><span>Mitarbeiter</span><strong>${escapeHtml(protocol.team || "—")}</strong></div></div>
       ${protocolPositionDetails(protocol)}
       ${protocol.notes ? `<section class="protocol-detail-section"><span>Bemerkung</span><p>${escapeHtml(protocol.notes)}</p></section>` : ""}
       ${protocolPhotos(protocol)}
@@ -893,9 +994,27 @@ function protocolPdfPeriod(protocol) {
   return from === to ? displayDate(from) : `${displayDate(from)} - ${displayDate(to)}`;
 }
 
+function protocolCustomer(protocol) {
+  const customerName = String(protocol.customer || "").trim().toLocaleLowerCase("de");
+  return customers.find((entry) => customerCompany(entry).toLocaleLowerCase("de") === customerName);
+}
+
+function protocolCustomerLines(protocol) {
+  const customer = protocolCustomer(protocol);
+  if (!customer) return [];
+  const city = [customer.postalCode, customer.city].filter(Boolean).join(" ");
+  const selectedContact = String(protocol.customerContact || customerContacts(customer)[0] || "").trim();
+  return [
+    selectedContact && `Ansprechpartner: ${selectedContact}`,
+    customer.street,
+    city,
+    customer.phone && `Telefon: ${customer.phone}`,
+    customer.email && `E-Mail: ${customer.email}`
+  ].filter(Boolean);
+}
+
 function protocolPrintDocument(protocol) {
-  const customer = customers.find((entry) => entry.name === protocol.customer);
-  const customerAddress = customer ? [customer.street, [customer.postalCode, customer.city].filter(Boolean).join(" ")].filter(Boolean) : [];
+  const customerDetails = protocolCustomerLines(protocol);
   const logoUrl = escapeHtml(new URL("luks-logo.png", window.location.href).href);
   const positionRows = protocol.positions.map((position) => {
     const details = [position.machine && `Maschine: ${position.machine}`, position.material && `Material: ${position.material}`].filter(Boolean).join(" | ");
@@ -918,7 +1037,7 @@ function protocolPrintDocument(protocol) {
     .photos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; } .photos img { width: 100%; max-height: 96mm; object-fit: cover; border: 1px solid #d7e2e7; border-radius: 4px; }
     footer { margin-top: 24px; padding-top: 9px; border-top: 1px solid #d7e2e7; color: #55717f; font-size: 8pt; } @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
   </style></head><body><header><div class="brand"><img src="${logoUrl}" alt="LUKS">LUKS Mobil</div><div class="document-type">Arbeitsprotokoll<br>${escapeHtml(protocolPdfPeriod(protocol))}</div></header>
-  <h1>${escapeHtml(protocol.project || "Arbeitsprotokoll")}</h1><div class="meta"><div><span class="label">Auftraggeber</span><strong>${escapeHtml(protocol.customer || "-")}</strong>${customerAddress.map((line) => `<span>${escapeHtml(line)}</span>`).join("")}</div><div><span class="label">Einsatzort</span><strong>${escapeHtml(protocol.location || "-")}</strong></div><div><span class="label">Zeitraum</span><strong>${escapeHtml(protocolPdfPeriod(protocol))}</strong></div><div><span class="label">Mitarbeiter</span><strong>${escapeHtml(protocol.team || "-")}</strong></div></div>
+  <h1>${escapeHtml(protocol.project || "Arbeitsprotokoll")}</h1><div class="meta"><div><span class="label">Auftraggeber</span><strong>${escapeHtml(protocol.customer || "-")}</strong>${customerDetails.map((line) => `<span>${escapeHtml(line)}</span>`).join("")}</div><div><span class="label">Einsatzort</span><strong>${escapeHtml(protocol.location || "-")}</strong></div><div><span class="label">Zeitraum</span><strong>${escapeHtml(protocolPdfPeriod(protocol))}</strong></div><div><span class="label">Mitarbeiter</span><strong>${escapeHtml(protocol.team || "-")}</strong></div></div>
   <section><h2>Leistungen</h2><table><thead><tr><th>Tätigkeit</th><th>Stunden</th></tr></thead><tbody>${positionRows}</tbody></table><div class="total">Gesamtstunden <span>${escapeHtml(hours(protocol.hours))}</span></div></section>${notes}${photoSection}<footer>Erstellt mit LUKS Mobil am ${escapeHtml(new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date()))}</footer>
   <script>window.addEventListener("load", function () { window.setTimeout(function () { window.focus(); window.print(); }, 250); });</script></body></html>`;
 }
@@ -966,15 +1085,13 @@ function pdfWrap(value, maxLength = 76) {
 }
 
 function protocolPdfLines(protocol) {
-  const customer = customers.find((entry) => entry.name === protocol.customer);
-  const customerAddress = customer ? [customer.street, [customer.postalCode, customer.city].filter(Boolean).join(" ")].filter(Boolean) : [];
   const lines = [];
   const add = (text, options = {}) => lines.push({ text, font: "F1", size: 10, gap: 0, right: "", rightX: 479, machine: "", material: "", type: "", ...options });
   const issuedOn = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date());
   const recipientLines = [protocol.customer || "Auftraggeber"];
-  customerAddress.forEach((addressLine) => pdfWrap(addressLine, 55).forEach((line) => recipientLines.push(line)));
-  recipientLines.slice(0, 4).forEach((line) => add(line, { size: 12 }));
-  const recipientGap = Math.max(24, 665 - recipientLines.slice(0, 4).length * 17 - 536);
+  protocolCustomerLines(protocol).forEach((detailLine) => pdfWrap(detailLine, 55).forEach((line) => recipientLines.push(line)));
+  recipientLines.slice(0, 6).forEach((line) => add(line, { size: 12 }));
+  const recipientGap = Math.max(24, 665 - recipientLines.slice(0, 6).length * 17 - 536);
   add("Hechingen, den " + issuedOn, { size: 12, gap: recipientGap, type: "issue-date" });
   pdfWrap("Arbeitsprotokoll - " + (protocol.project || "Arbeitsleistung"), 63).forEach((line, index) => add(line, { font: "F2", size: 16, gap: index === 0 ? 28 : 0 }));
   add("Leistungsdatum: " + protocolPdfPeriod(protocol), { size: 12 });
@@ -1199,14 +1316,14 @@ async function downloadProtocolPdf(protocol) {
 }
 
 function invoiceTransferPayload(protocol) {
-  const masterCustomer = customers.find((customer) => customer.name === protocol.customer);
+  const masterCustomer = protocolCustomer(protocol);
   return {
     format: "LUKS-Arbeitsprotokoll-Rechnungsuebergabe",
     version: 1,
     exportedAt: new Date().toISOString(),
     source: { protocolId: protocol.id, status: protocol.status },
     customer: masterCustomer ? {
-      name: masterCustomer.name, contact: masterCustomer.contact, street: masterCustomer.street,
+      company: customerCompany(masterCustomer), name: customerCompany(masterCustomer), contacts: customerContacts(masterCustomer), contact: protocol.customerContact || customerContacts(masterCustomer)[0] || "", street: masterCustomer.street,
       postalCode: masterCustomer.postalCode, city: masterCustomer.city, email: masterCustomer.email, phone: masterCustomer.phone
     } : { name: protocol.customer || "" },
     invoice: {
@@ -1302,7 +1419,7 @@ function saveProtocol(id = "") {
   const protocol = normaliseProtocols([{
     ...existingData,
     id: existing ? existing.id : "ap-" + crypto.randomUUID(),
-    project: values.get("project").trim(), customer: values.get("customer").trim(), location: values.get("location").trim(),
+    project: values.get("project").trim(), customer: values.get("customer").trim(), customerContact: values.get("customer-contact").trim(), location: values.get("location").trim(),
     dateFrom, dateTo, team: values.get("team").trim(), positions, notes: values.get("notes").trim(), photos: pendingPhotos,
     status: "draft", updated: today()
   }])[0];
@@ -1421,7 +1538,7 @@ document.addEventListener("click", (event) => {
   const action = event.target.closest("[data-action]");
   if (action) {
     const handlers = {
-      "new-protocol": openNewProtocol, "new-appointment-from-calendar": () => openNewAppointment(calendarSelected), "open-timer": () => setView("timer"), "open-protocols": () => setView("protocols"), "open-customers": () => setView("customers"), "open-calendar": () => setView("calendar"), "calendar-previous": () => moveCalendarMonth(-1), "calendar-next": () => moveCalendarMonth(1), "calendar-day": () => selectCalendarDay(action.dataset.date), "protocol-detail": () => openProtocolDetail(action.dataset.id), "appointment-detail": () => openAppointmentDetail(action.dataset.id), "new-customer": openNewCustomer, "customer-detail": () => openCustomerEditor(action.dataset.id), "open-activities": () => setView("activities"), "new-activity": openNewActivity, "activity-detail": () => openActivityEditor(action.dataset.id), "add-position": addPosition, "remove-position": () => removePosition(action.closest("[data-position]")), "close-dialog": closeDialog, "remove-pending-photo": () => removePendingPhoto(action.dataset.index),
+      "new-protocol": openNewProtocol, "new-appointment-from-calendar": () => openNewAppointment(calendarSelected), "open-timer": () => setView("timer"), "open-protocols": () => setView("protocols"), "open-customers": () => setView("customers"), "open-calendar": () => setView("calendar"), "calendar-previous": () => moveCalendarMonth(-1), "calendar-next": () => moveCalendarMonth(1), "calendar-day": () => selectCalendarDay(action.dataset.date), "protocol-detail": () => openProtocolDetail(action.dataset.id), "appointment-detail": () => openAppointmentDetail(action.dataset.id), "new-customer": openNewCustomer, "customer-detail": () => openCustomerEditor(action.dataset.id), "add-customer-contact": addCustomerContact, "remove-customer-contact": () => removeCustomerContact(action.closest("[data-customer-contact]")), "open-activities": () => setView("activities"), "new-activity": openNewActivity, "activity-detail": () => openActivityEditor(action.dataset.id), "add-position": addPosition, "remove-position": () => removePosition(action.closest("[data-position]")), "close-dialog": closeDialog, "remove-pending-photo": () => removePendingPhoto(action.dataset.index),
       "toggle-timer": toggleTimer, "reset-timer": resetTimer, "install-app": openInstallGuide, "backup": exportBackup,
       "about": () => showDialog({ title: "Über LUKS Mobil", content: `<div class="dialog-body"><p class="local-note">LUKS Mobil ist die Baustellen-App für Arbeitsprotokolle und mobile Zeiterfassung.</p><div class="dialog-actions"><button class="button button--primary" type="submit" value="close">Schließen</button></div></div>` })
     };
@@ -1444,10 +1561,13 @@ document.addEventListener("click", (event) => {
     return openProtocolDetail(id);
   }
   if (dialogAction.dataset.dialogAction === "delete-appointment") return deleteAppointment(id);
+  if (dialogAction.dataset.dialogAction === "confirm-delete-appointment") return confirmDeleteAppointment(id);
   if (dialogAction.dataset.dialogAction === "save-customer") return saveCustomer(id);
   if (dialogAction.dataset.dialogAction === "delete-customer") return deleteCustomer(id);
+  if (dialogAction.dataset.dialogAction === "confirm-delete-customer") return confirmDeleteCustomer(id);
   if (dialogAction.dataset.dialogAction === "save-activity") return saveActivity(id);
   if (dialogAction.dataset.dialogAction === "delete-activity") return deleteActivity(id);
+  if (dialogAction.dataset.dialogAction === "confirm-delete-activity") return confirmDeleteActivity(id);
   if (dialogAction.dataset.dialogAction === "edit-protocol") return openProtocolEditor(id);
   if (dialogAction.dataset.dialogAction === "export-for-invoice") return exportForInvoice(id);
   if (dialogAction.dataset.dialogAction === "share-for-invoice") return shareForInvoice(id);
@@ -1457,7 +1577,17 @@ document.addEventListener("click", (event) => {
     closeDialog();
     return saveData("Arbeitsprotokoll abgeschlossen");
   }
-  if (dialogAction.dataset.dialogAction === "delete-protocol" && confirm("Dieses Arbeitsprotokoll wirklich löschen?")) {
+  if (dialogAction.dataset.dialogAction === "delete-protocol") {
+    const protocol = data.protocols.find((row) => row.id === id);
+    if (!protocol) return showToast("Arbeitsprotokoll nicht gefunden");
+    return openDeleteConfirmation({
+      title: protocol.project || "Arbeitsprotokoll löschen",
+      message: "Soll dieses Arbeitsprotokoll endgültig gelöscht werden?",
+      action: "confirm-delete-protocol",
+      id
+    });
+  }
+  if (dialogAction.dataset.dialogAction === "confirm-delete-protocol") {
     data.protocols = data.protocols.filter((row) => row.id !== id);
     closeDialog();
     return saveData("Arbeitsprotokoll gelöscht");
@@ -1486,3 +1616,4 @@ window.addEventListener("appinstalled", () => {
 render();
 loadCustomers();
 loadActivities();
+
