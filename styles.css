@@ -194,6 +194,8 @@ main { width: 100%; padding: 20px clamp(12px, 4vw, 20px) calc(84px + env(safe-ar
 .row-main { min-width: 0; }
 .row-title { display: block; overflow: hidden; color: var(--blue-deep); font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .row-subtitle { display: block; overflow: hidden; margin-top: 3px; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.row-subtitle--customer { color: var(--blue); font-weight: 650; }
+.row-context { display: block; overflow: hidden; margin-top: 2px; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .row-side { text-align: right; }
 .row-amount { color: var(--blue-deep); font-size: 14px; font-weight: 750; white-space: nowrap; }
 .row-date { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
@@ -284,6 +286,12 @@ main { width: 100%; padding: 20px clamp(12px, 4vw, 20px) calc(84px + env(safe-ar
 .position-editor + .position-editor { margin-top: 10px; }
 .position-editor-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .position-editor-heading strong { color: var(--blue-deep); font-size: 13px; }
+.customer-contact-section { display: grid; min-width: 0; gap: 10px; }
+.customer-contact-section .section-heading { margin: 0; }
+.customer-contact-section .section-heading h3 { font-size: 14px; }
+.customer-contact-list { display: grid; gap: 10px; }
+.customer-contact-editor { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; padding: 11px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-soft); }
+.customer-contact-editor .text-button { margin-bottom: 12px; }
 .photo-capture { display: grid; gap: 8px; }
 .photo-capture input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 .photo-capture-button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 45px; border: 1px dashed #8fb8cc; border-radius: 10px; color: var(--blue); background: var(--blue-light); font-size: 13px; font-weight: 750; cursor: pointer; }
@@ -293,7 +301,7 @@ main { width: 100%; padding: 20px clamp(12px, 4vw, 20px) calc(84px + env(safe-ar
 .photo-thumb { position: relative; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); }
 .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .photo-thumb button { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 23px; height: 23px; border: 0; border-radius: 50%; color: var(--surface); background: rgba(38,50,56,.82); font-size: 18px; line-height: 1; }
-.dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
+.dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; margin-top: 20px; }
 .button { min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 9px; color: var(--blue); background: var(--surface); font-weight: 700; }
 .button--primary { border-color: var(--blue); color: var(--surface); background: var(--blue); }
 .button--wide { width: 100%; }
@@ -302,7 +310,9 @@ main { width: 100%; padding: 20px clamp(12px, 4vw, 20px) calc(84px + env(safe-ar
 .detail-grid div { padding: 11px; border-radius: 10px; background: var(--surface-soft); }
 .detail-grid span { display: block; margin-bottom: 4px; color: var(--muted); font-size: 11px; }
 .detail-grid strong { color: var(--blue-deep); font-size: 13px; }
-.danger-button { margin-top: 11px; color: var(--red); }
+.danger-button { color: var(--red); }
+.button--danger { border-color: var(--red); color: #fff; background: var(--red); }
+.button--danger:hover { background: #a9232d; }
 .protocol-detail-section { margin-top: 13px; padding: 12px; border-radius: 10px; background: var(--surface-soft); }
 .protocol-detail-section span { display: block; margin-bottom: 5px; color: var(--muted); font-size: 11px; }
 .protocol-detail-section p { color: var(--blue-deep); font-size: 13px; line-height: 1.42; white-space: pre-wrap; }
