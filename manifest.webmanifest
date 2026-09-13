@@ -1,0 +1,29 @@
+{
+  "name": "LUKS Mobil",
+  "short_name": "LUKS Mobil",
+  "id": "./",
+  "description": "Arbeitsprotokolle direkt auf der Baustelle erfassen.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#f4f7f9",
+  "theme_color": "#234a5f",
+  "lang": "de",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "luks-logo.png",
+      "sizes": "337x337",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "luks-logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

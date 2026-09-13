@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#234a5f">
+    <meta name="description" content="LUKS Mobil – Arbeitsprotokolle direkt auf der Baustelle erfassen.">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="LUKS Mobil">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="luks-logo.png" type="image/png">
+    <link rel="apple-touch-icon" href="luks-logo.png">
+    <link rel="stylesheet" href="styles.css">
+    <title>LUKS Mobil – Arbeitsprotokolle</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="brand-logo"><img src="luks-logo.png" alt="LUKS"></div>
+        <div>
+          <p class="eyebrow">Landschafts- und Kommunalservice</p>
+          <h1>LUKS Mobil</h1>
+        </div>
+        <button class="icon-button" id="notification-button" type="button" aria-label="Offene Arbeitsprotokolle anzeigen">
+          <span aria-hidden="true">⌁</span><span class="notification-dot" id="notification-dot"></span>
+        </button>
+      </header>
+
+      <main>
+        <section class="view is-active" data-view="home" aria-labelledby="home-title">
+          <div class="welcome-row">
+            <div>
+              <p class="eyebrow" id="today-label">Heute</p>
+              <h2 id="home-title">Tagesübersicht</h2>
+            </div>
+            <button class="profile-button" id="profile-button" type="button" aria-label="Weitere Funktionen öffnen">RS</button>
+          </div>
+          <div class="sync-state" role="status"><span class="sync-indicator" aria-hidden="true"></span>Offline gespeichert · bereit zur Synchronisierung</div>
+
+          <section class="summary-grid" aria-label="Tagesübersicht">
+            <article class="summary-card summary-card--primary"><p>Laufende Aufträge</p><strong id="today-hours">0</strong><span id="today-projects">im gewählten Zeitraum</span></article>
+            <article class="summary-card"><p>Offene Entwürfe</p><strong id="draft-count">0</strong><span id="draft-hours">0,0 Std.</span></article>
+          </section>
+
+          <section class="section-block" aria-labelledby="quick-actions-title">
+            <div class="section-heading"><h3 id="quick-actions-title">Schnell erfassen</h3></div>
+            <div class="quick-actions">
+              <button class="quick-action" type="button" data-action="new-protocol"><span class="quick-icon quick-icon--blue" aria-hidden="true">+</span><span>Protokoll</span></button>
+              <button class="quick-action" type="button" data-action="open-timer"><span class="quick-icon quick-icon--green" aria-hidden="true">◷</span><span>Arbeitszeit</span></button>
+              <button class="quick-action" type="button" data-action="open-protocols"><span class="quick-icon quick-icon--soft" aria-hidden="true">⌕</span><span>Protokolle</span></button>
+            </div>
+          </section>
+
+          <section class="attention-card" id="attention-card" aria-live="polite">
+            <div class="attention-icon" aria-hidden="true">!</div>
+            <div><p class="eyebrow">Noch zu erledigen</p><h3 id="attention-title">Alles abgeschlossen</h3><p id="attention-text">Für heute liegen keine offenen Arbeitsprotokolle vor.</p></div>
+            <button class="text-button" type="button" data-action="open-protocols">Ansehen</button>
+          </section>
+
+          <section class="section-block" aria-labelledby="recent-title">
+            <div class="section-heading"><h3 id="recent-title">Letzte Arbeitsprotokolle</h3><button class="text-button" type="button" data-action="open-protocols">Alle</button></div>
+            <div class="mobile-list" id="recent-list"></div>
+          </section>
+        </section>
+
+        <section class="view" data-view="protocols" aria-labelledby="protocols-title" hidden>
+          <div class="page-title-row">
+            <div><p class="eyebrow">Baustellendokumentation</p><h2 id="protocols-title">Arbeitsprotokolle</h2></div>
+            <button class="round-add" type="button" data-action="new-protocol" aria-label="Arbeitsprotokoll hinzufügen">+</button>
+          </div>
+          <label class="search-field"><span aria-hidden="true">⌕</span><input id="protocol-search" type="search" placeholder="Baustelle, Ort oder Tätigkeit suchen" autocomplete="off"></label>
+          <div class="filter-row" role="group" aria-label="Arbeitsprotokolle filtern">
+            <button class="filter-chip is-active" type="button" data-filter="all" aria-pressed="true">Alle</button>
+            <button class="filter-chip" type="button" data-filter="draft" aria-pressed="false">Entwürfe</button>
+            <button class="filter-chip" type="button" data-filter="complete" aria-pressed="false">Abgeschlossen</button>
+          </div>
+          <p class="result-summary" id="protocol-result-summary"></p>
+          <div class="mobile-list document-list" id="protocol-list"></div>
+        </section>
+
+        <section class="view" data-view="timer" aria-labelledby="timer-title" hidden>
+          <div class="page-title-row"><div><p class="eyebrow">Arbeitszeit</p><h2 id="timer-title">Zeiterfassung</h2></div></div>
+          <section class="timer-card" aria-live="polite">
+            <span class="timer-state" id="timer-state">Bereit</span>
+            <strong id="timer-display">00:00:00</strong>
+            <p id="timer-description">Starte die Zeit direkt beim Arbeitsbeginn.</p>
+            <button class="timer-button" id="timer-button" type="button" data-action="toggle-timer">Arbeitszeit starten</button>
+            <button class="timer-reset" type="button" data-action="reset-timer">Zeit zurücksetzen</button>
+          </section>
+          <section class="section-block" aria-labelledby="time-note-title">
+            <div class="section-heading"><h3 id="time-note-title">Zeit übernehmen</h3></div>
+            <p class="timer-note" id="timer-note">Gestoppte Zeiten kannst du beim nächsten Arbeitsprotokoll übernehmen.</p>
+            <button class="button button--primary button--wide" type="button" data-action="new-protocol">Arbeitsprotokoll anlegen</button>
+          </section>
+        </section>
+
+        <section class="view" data-view="customers" aria-labelledby="customers-title" hidden>
+          <div class="page-title-row">
+            <div><p class="eyebrow">Stammdaten</p><h2 id="customers-title">Kundenstamm</h2></div>
+            <button class="round-add" type="button" data-action="new-customer" aria-label="Kunden hinzufügen">+</button>
+          </div>
+          <label class="search-field"><span aria-hidden="true">⌕</span><input id="customer-search" type="search" placeholder="Kunde, Ort oder Ansprechpartner suchen" autocomplete="off"></label>
+          <p class="result-summary" id="customer-result-summary"></p>
+          <div class="mobile-list document-list" id="customer-list"></div>
+        </section>
+
+        <section class="view" data-view="activities" aria-labelledby="activities-title" hidden>
+          <div class="page-title-row">
+            <div><p class="eyebrow">Stammdaten</p><h2 id="activities-title">Tätigkeiten</h2></div>
+            <button class="round-add" type="button" data-action="new-activity" aria-label="Tätigkeit hinzufügen">+</button>
+          </div>
+          <label class="search-field"><span aria-hidden="true">⌕</span><input id="activity-search" type="search" placeholder="Tätigkeit suchen" autocomplete="off"></label>
+          <p class="result-summary" id="activity-result-summary"></p>
+          <div class="mobile-list document-list" id="activity-list"></div>
+        </section>
+
+        <section class="view" data-view="calendar" aria-labelledby="calendar-title" hidden>
+          <div class="page-title-row"><div><p class="eyebrow">Einsatzplanung</p><h2 id="calendar-title">Kalender</h2></div><button class="round-add" type="button" data-action="new-appointment-from-calendar" aria-label="Termin für den ausgewählten Tag anlegen">+</button></div>
+          <section class="calendar-card" aria-label="Arbeitskalender">
+            <div class="calendar-toolbar"><button class="calendar-month-button" type="button" data-action="calendar-previous" aria-label="Vorheriger Monat">‹</button><strong id="calendar-month-label">Monat</strong><button class="calendar-month-button" type="button" data-action="calendar-next" aria-label="Nächster Monat">›</button></div>
+            <div class="calendar-weekdays" aria-hidden="true"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
+            <div class="calendar-grid" id="calendar-grid"></div>
+            <div class="calendar-legend" aria-label="Kalender-Legende"><span><i class="calendar-legend-color calendar-legend-color--appointment"></i>Termin</span><span><i class="calendar-legend-color calendar-legend-color--protocol"></i>Protokoll</span><span><i class="calendar-legend-color calendar-legend-color--free"></i>Frei</span><span><i class="calendar-legend-color calendar-legend-color--sunday"></i>Sonntag</span><span><i class="calendar-legend-color calendar-legend-color--holiday"></i>Feiertag</span></div>
+          </section>
+          <p class="result-summary" id="calendar-result-summary"></p>
+          <section class="section-block" aria-labelledby="calendar-selected-title">
+            <div class="section-heading"><h3 id="calendar-selected-title">Ausgewählter Tag</h3></div>
+            <div class="mobile-list document-list" id="calendar-day-list"></div>
+          </section>
+        </section>
+
+        <section class="view" data-view="more" aria-labelledby="more-title" hidden>
+          <div class="page-title-row"><div><p class="eyebrow">LUKS Mobil</p><h2 id="more-title">Mehr</h2></div></div>
+          <section class="settings-card"><div class="profile-avatar" aria-hidden="true">RS</div><div><h3>Rick Schuler</h3><p>Landschafts- und Kommunalservice</p></div></section>
+          <section class="settings-list" aria-label="Weitere Funktionen">
+            <button type="button" data-action="open-customers"><span class="settings-icon" aria-hidden="true">♙</span><span>Kundenstamm</span><span aria-hidden="true">›</span></button>
+            <button type="button" data-action="open-activities"><span class="settings-icon" aria-hidden="true">≡</span><span>Tätigkeiten verwalten</span><span aria-hidden="true">›</span></button>
+            <button type="button" data-action="install-app"><span class="settings-icon" aria-hidden="true">↓</span><span>App installieren</span><span aria-hidden="true">›</span></button>
+            <button type="button" data-action="backup"><span class="settings-icon" aria-hidden="true">⇩</span><span>Protokolle sichern</span><span aria-hidden="true">›</span></button>
+            <label class="settings-import"><span class="settings-icon" aria-hidden="true">⇧</span><span>Sicherung einspielen</span><span aria-hidden="true">›</span><input id="import-input" type="file" accept="application/json,.json" hidden></label>
+            <button type="button" data-action="about"><span class="settings-icon" aria-hidden="true">i</span><span>Über LUKS Mobil</span><span aria-hidden="true">›</span></button>
+          </section>
+          <p class="local-note">Arbeitsprotokolle und Fotos werden nur auf diesem Gerät gespeichert. Unterschriften und die Verbindung zum LUKS-Desktopprogramm können im nächsten Schritt ergänzt werden.</p>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Hauptnavigation">
+        <button class="nav-item is-active" type="button" data-nav="home" aria-current="page"><span aria-hidden="true">⌂</span><span>Übersicht</span></button>
+        <button class="nav-item" type="button" data-nav="protocols"><span aria-hidden="true">▤</span><span>Protokolle</span></button>
+        <button class="nav-item" type="button" data-nav="timer"><span aria-hidden="true">◷</span><span>Arbeitszeit</span></button>
+        <button class="nav-item" type="button" data-nav="calendar"><span aria-hidden="true">▦</span><span>Kalender</span></button>
+        <button class="nav-item" type="button" data-nav="more"><span aria-hidden="true">•••</span><span>Mehr</span></button>
+      </nav>
+    </div>
+
+    <dialog class="app-dialog" id="app-dialog" aria-labelledby="dialog-title">
+      <form method="dialog" id="dialog-form">
+        <div class="dialog-header"><div><p class="eyebrow" id="dialog-eyebrow">LUKS Mobil</p><h2 id="dialog-title"></h2></div><button class="icon-button" type="button" data-action="close-dialog" aria-label="Arbeitsprotokoll schließen">×</button></div>
+        <div id="dialog-content"></div>
+      </form>
+    </dialog>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="customer-db.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
