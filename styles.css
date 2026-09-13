@@ -73,7 +73,7 @@ button { cursor: pointer; }
 }
 
 .brand-mark { width: 38px; height: 38px; font-size: 19px; box-shadow: inset 0 0 0 4px #dcefdc; }
-.brand-logo { display: grid; place-items: center; width: 42px; height: 42px; flex: none; overflow: hidden; border-radius: 10px; background: #000; }
+.brand-logo { display: grid; place-items: center; width: 42px; height: 42px; flex: none; overflow: hidden; border-radius: 50%; background: #000; }
 .brand-logo img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .profile-button { width: 37px; height: 37px; border: 0; font-size: 12px; }
 .profile-avatar { width: 48px; height: 48px; font-size: 15px; }
@@ -377,3 +377,4 @@ main { width: 100%; padding: 20px clamp(12px, 4vw, 20px) calc(84px + env(safe-ar
   .summary-card { min-height: 105px; }
   .section-block, .attention-card { margin-top: 18px; }
 }
+
