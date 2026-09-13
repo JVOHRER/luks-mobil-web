@@ -1,4 +1,4 @@
-const CACHE_NAME = "luks-mobil-v29";
+const CACHE_NAME = "luks-mobil-v30";
 const APP_FILES = ["./", "./index.html", "./styles.css", "./customer-db.js", "./app.js", "./manifest.webmanifest", "./luks-logo.png", "./luks-logo-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -15,3 +15,4 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
 });
+
