@@ -221,6 +221,7 @@ main { width: 100%; padding: 20px clamp(12px, 4vw, 20px) calc(84px + env(safe-ar
 .settings-list > :last-child { border-bottom: 0; }
 .settings-icon { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 7px; color: var(--blue); background: var(--blue-light); font-size: 16px; font-weight: 700; }
 .local-note { margin: 17px 2px; }
+.backup-status { margin: -8px 2px 17px; color: var(--green); font-size: 11px; font-weight: 700; }
 
 .calendar-card { padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
 .calendar-toolbar { display: grid; grid-template-columns: 38px 1fr 38px; align-items: center; margin-bottom: 12px; text-align: center; }
