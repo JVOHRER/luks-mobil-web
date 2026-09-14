@@ -20,7 +20,7 @@
       <header class="app-header">
         <div class="brand-logo"><img src="luks-logo.png" alt="LUKS"></div>
         <div>
-          <p class="eyebrow">Landschafts- und Kommunalservice</p>
+          <p class="eyebrow">Arbeitsprotokolle mobil</p>
           <h1>LUKS Mobil</h1>
         </div>
         <button class="icon-button" id="notification-button" type="button" aria-label="Offene Arbeitsprotokolle anzeigen">
@@ -133,7 +133,7 @@
 
         <section class="view" data-view="more" aria-labelledby="more-title" hidden>
           <div class="page-title-row"><div><p class="eyebrow">LUKS Mobil</p><h2 id="more-title">Mehr</h2></div></div>
-          <section class="settings-card"><div class="profile-avatar" aria-hidden="true">RS</div><div><h3>Rick Schuler</h3><p>Landschafts- und Kommunalservice</p></div></section>
+          <section class="settings-card"><div class="profile-avatar" aria-hidden="true">LM</div><div><h3>LUKS Mobil</h3><p>Arbeitsprotokolle mobil</p></div></section>
           <section class="settings-list" aria-label="Weitere Funktionen">
             <button type="button" data-action="open-customers"><span class="settings-icon" aria-hidden="true">♙</span><span>Kundenstamm</span><span aria-hidden="true">›</span></button>
             <button type="button" data-action="open-activities"><span class="settings-icon" aria-hidden="true">≡</span><span>Tätigkeiten verwalten</span><span aria-hidden="true">›</span></button>
@@ -142,7 +142,8 @@
             <label class="settings-import"><span class="settings-icon" aria-hidden="true">⇧</span><span>Sicherung einspielen</span><span aria-hidden="true">›</span><input id="import-input" type="file" accept="application/json,.json" hidden></label>
             <button type="button" data-action="about"><span class="settings-icon" aria-hidden="true">i</span><span>Über LUKS Mobil</span><span aria-hidden="true">›</span></button>
           </section>
-          <p class="local-note">Arbeitsprotokolle und Fotos werden nur auf diesem Gerät gespeichert. Unterschriften und die Verbindung zum LUKS-Desktopprogramm können im nächsten Schritt ergänzt werden.</p>
+          <p class="local-note">Arbeitsprotokolle und Fotos werden nur auf diesem Gerät gespeichert. Bitte regelmäßig eine Sicherung herunterladen und das Handy mit PIN oder biometrischer Sperre schützen.</p>
+          <p class="backup-status" id="backup-status" aria-live="polite"></p>
         </section>
       </main>
 
@@ -166,3 +167,4 @@
     <script src="app.js"></script>
   </body>
 </html>
+
