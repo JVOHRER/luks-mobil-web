@@ -1,4 +1,5 @@
 const STORE_KEY = "luks-mobil-protocols-v1";
+const BACKUP_KEY = "luks-mobil-last-backup";
 
 function iso(date = new Date()) { return date.toISOString().slice(0, 10); }
 function today() { return iso(); }
@@ -10,17 +11,17 @@ function displayDate(value) { return value ? new Intl.DateTimeFormat("de-DE", { 
 const seed = {
   protocols: [
     {
-      id: "ap-001", project: "Pflege Gewann Tälesteich", customer: "Zweckverband Starzel-Eyach", location: "Owingen", date: today(),
-      team: "Rick Schuler, Max Mustermann", work: "Freischneiden und Pflegearbeiten an der Wassertrasse.", hours: 4.5,
-      machine: "Raupe", material: "Kraftstoff", notes: "Abschnitt Nord fertiggestellt.", status: "draft", updated: today()
+      id: "ap-001", project: "Beispielauftrag Pflege", customer: "Beispielkunde", location: "Beispielort", date: today(),
+      team: "Mitarbeiter 1, Mitarbeiter 2", work: "Freischneiden und Pflegearbeiten.", hours: 4.5,
+      machine: "Arbeitsgerät", material: "Material", notes: "Beispielprotokoll.", status: "draft", updated: today()
     },
     {
-      id: "ap-002", project: "Mulchen Hutzeltour", customer: "Stadt Hechingen", location: "Hechingen", date: daysAgo(2),
-      team: "Rick Schuler", work: "Mulchen und Ausmähen der Wegeränder.", hours: 8, machine: "Lindtrac", material: "—", notes: "Arbeiten ohne Besonderheiten abgeschlossen.", status: "complete", updated: daysAgo(1)
+      id: "ap-002", project: "Beispielauftrag Mulchen", customer: "Beispielstadt", location: "Beispielort", date: daysAgo(2),
+      team: "Mitarbeiter 1", work: "Mulchen und Pflegearbeiten.", hours: 8, machine: "Arbeitsgerät", material: "—", notes: "Beispielprotokoll abgeschlossen.", status: "complete", updated: daysAgo(1)
     },
     {
-      id: "ap-003", project: "Reinigung Zellerbach", customer: "Stadtverwaltung Hechingen", location: "Boll", date: daysAgo(4),
-      team: "Rick Schuler, Max Mustermann", work: "Bäume und Schwemmgut aus dem Bachbett entfernt.", hours: 7.5, machine: "Bagger, Lkw", material: "Sicherungsmaterial", notes: "Zufahrt freigegeben.", status: "complete", updated: daysAgo(4)
+      id: "ap-003", project: "Beispielauftrag Reinigung", customer: "Beispielverwaltung", location: "Beispielort", date: daysAgo(4),
+      team: "Mitarbeiter 1, Mitarbeiter 2", work: "Reinigungsarbeiten.", hours: 7.5, machine: "Arbeitsgerät", material: "Sicherungsmaterial", notes: "Beispielprotokoll abgeschlossen.", status: "complete", updated: daysAgo(4)
     }
   ],
   timer: { startedAt: null, pendingSeconds: 0 },
@@ -251,6 +252,16 @@ function render() {
   renderCustomers();
   renderActivities();
   renderCalendar();
+  renderBackupStatus();
+}
+
+function renderBackupStatus() {
+  const status = $("#backup-status");
+  if (!status) return;
+  const savedAt = localStorage.getItem(BACKUP_KEY);
+  status.textContent = savedAt
+    ? `Letzte Sicherung: ${new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short" }).format(new Date(savedAt))}`
+    : "Noch keine Sicherung auf diesem Gerät erstellt.";
 }
 
 function renderDashboard() {
@@ -599,7 +610,7 @@ function openNewAppointment(date = calendarSelected) {
       '<div class="form-two-columns"><label class="form-field">Von<input name="appointment-date-from" type="date" value="', escapeHtml(date), '" required></label><label class="form-field">Bis<input name="appointment-date-to" type="date" value="', escapeHtml(date), '" required></label></div>',
       '<label class="form-field">Kunde<input name="appointment-customer" list="customer-options" placeholder="Kundenname oder Auftraggeber"></label>', customerOptions(),
       '<label class="form-field">Ort / Baustelle<input name="appointment-location" placeholder="Ort oder Bereich"></label>',
-      '<label class="form-field">Mitarbeiter<input name="appointment-team" placeholder="z. B. Rick Schuler"></label>',
+      '<label class="form-field">Mitarbeiter<input name="appointment-team" placeholder="z. B. Mitarbeiter 1"></label>',
       '<label class="form-field">Hinweis<textarea name="appointment-notes" rows="2" placeholder="z. B. Fläche am Regenüberlaufbecken mähen"></textarea></label>',
       '</div><div class="dialog-actions"><button class="button" type="submit" value="cancel" formnovalidate>Abbrechen</button><button class="button button--primary" type="button" data-dialog-action="save-appointment">Termin speichern</button></div></div>'
     ].join("")
@@ -691,11 +702,11 @@ function openNewProtocol(date = today(), appointment = null) {
     content: `<div class="dialog-body"><div class="form-grid">
       <input type="hidden" name="source-appointment" value="${escapeHtml(appointment?.id || "")}">
       <label class="form-field">Baustelle / Projekt<input name="project" value="${initialTitle}" placeholder="z. B. Pflege Gewann Tälesteich" required autofocus></label>
-      <label class="form-field">Firma / Auftraggeber<input name="customer" list="customer-options" value="${initial("customer")}" placeholder="Firma aus dem Kundenstamm"></label>${customerOptions()}
+      <label class="form-field">Firma / Auftraggeber<input name="customer" list="customer-options" value="${initial("customer")}" placeholder="Firma aus dem Kundenstamm" required></label>${customerOptions()}
       <label class="form-field">Ansprechpartner<select name="customer-contact" aria-label="Ansprechpartner auswählen"></select></label>
       <label class="form-field">Ort / Baustelle<input name="location" value="${initial("location")}" placeholder="Ort oder Bereich" required></label>
       <div class="form-two-columns"><label class="form-field">Von<input name="date-from" type="date" value="${dateFrom}" required></label><label class="form-field">Bis<input name="date-to" type="date" value="${dateTo}" required></label></div>
-      <label class="form-field">Mitarbeiter<input name="team" value="${initial("team")}" placeholder="z. B. Rick Schuler, Max Mustermann"></label>
+      <label class="form-field">Mitarbeiter<input name="team" value="${initial("team")}" placeholder="z. B. Mitarbeiter 1, Mitarbeiter 2" required></label>
       <section class="position-section"><div class="section-heading"><h3>Positionen</h3><button type="button" class="text-button" data-action="add-position">+ Position</button></div>${activityOptions()}<div id="position-list">${positionEditorMarkup(1, { hours: suggestedHours, description: appointment?.title || "" })}</div></section>
       <label class="form-field">Bemerkung<textarea name="notes" rows="2" placeholder="Besonderheiten, Schäden oder Hinweise">${initial("notes")}</textarea></label>
       <div class="photo-capture"><input id="protocol-photos" name="photos" type="file" accept="image/*" capture="environment" multiple><label for="protocol-photos" class="photo-capture-button"><span aria-hidden="true">◉</span> Foto aufnehmen</label><p>Bis zu 4 Fotos werden verkleinert und nur auf diesem Gerät gespeichert.</p></div>
@@ -720,11 +731,11 @@ function openProtocolEditor(id) {
     content: [
       '<div class="dialog-body"><p class="local-note">Die Stammdaten und bisherigen Positionen bleiben erhalten. Ergänze nur neue Tage, Stunden, Positionen oder Fotos.</p><div class="form-grid">',
       '<label class="form-field">Baustelle / Projekt<input name="project" value="' + value("project") + '" required autofocus></label>',
-      '<label class="form-field">Firma / Auftraggeber<input name="customer" list="customer-options" value="' + value("customer") + '" placeholder="Firma aus dem Kundenstamm"></label>', customerOptions(),
+      '<label class="form-field">Firma / Auftraggeber<input name="customer" list="customer-options" value="' + value("customer") + '" placeholder="Firma aus dem Kundenstamm" required></label>', customerOptions(),
       '<label class="form-field">Ansprechpartner<select name="customer-contact" aria-label="Ansprechpartner auswählen"></select></label>',
       '<label class="form-field">Ort / Baustelle<input name="location" value="' + value("location") + '" required></label>',
       '<div class="form-two-columns"><label class="form-field">Von<input name="date-from" type="date" value="' + escapeHtml(protocol.dateFrom || protocol.date || today()) + '" required></label><label class="form-field">Bis<input name="date-to" type="date" value="' + escapeHtml(protocol.dateTo || protocol.date || today()) + '" required></label></div>',
-      '<label class="form-field">Mitarbeiter<input name="team" value="' + value("team") + '"></label>',
+      '<label class="form-field">Mitarbeiter<input name="team" value="' + value("team") + '" required></label>',
       '<section class="position-section"><div class="section-heading"><h3>Positionen</h3><button type="button" class="text-button" data-action="add-position">+ Position</button></div>', activityOptions(), '<div id="position-list">', positions, '</div></section>',
       '<label class="form-field">Bemerkung<textarea name="notes" rows="2" placeholder="Besonderheiten, Schäden oder Hinweise">', value("notes"), '</textarea></label>',
       '<div class="photo-capture"><input id="protocol-photos" name="photos" type="file" accept="image/*" capture="environment" multiple><label for="protocol-photos" class="photo-capture-button"><span aria-hidden="true">◉</span> Foto aufnehmen</label><p>Bis zu 4 Fotos werden verkleinert und nur auf diesem Gerät gespeichert.</p></div>',
@@ -1092,7 +1103,7 @@ function protocolPdfLines(protocol) {
   protocolCustomerLines(protocol).forEach((detailLine) => pdfWrap(detailLine, 55).forEach((line) => recipientLines.push(line)));
   recipientLines.slice(0, 6).forEach((line) => add(line, { size: 12 }));
   const recipientGap = Math.max(24, 665 - recipientLines.slice(0, 6).length * 17 - 536);
-  add("Hechingen, den " + issuedOn, { size: 12, gap: recipientGap, type: "issue-date" });
+  add("Erstellt am " + issuedOn, { size: 12, gap: recipientGap, type: "issue-date" });
   pdfWrap("Arbeitsprotokoll - " + (protocol.project || "Arbeitsleistung"), 63).forEach((line, index) => add(line, { font: "F2", size: 16, gap: index === 0 ? 28 : 0 }));
   add("Leistungsdatum: " + protocolPdfPeriod(protocol), { size: 12 });
   add("Bitte bei Rückfragen angeben.", { size: 10, gap: 23 });
@@ -1182,14 +1193,9 @@ function pdfPageContent(lines, pageNumber, pageCount, hasLogo) {
   const commands = [
     logoCommand,
     hasLogo ? "" : "1 0.94 0 rg BT /F2 18 Tf 1 0 0 1 490 732 Tm (LUKS) Tj ET",
-    "0.12 0.12 0.12 rg BT /F1 8 Tf 1 0 0 1 78 703 Tm (Landschaft und Kommunalservice Schuler - 72379 Hechingen) Tj ET",
+    "0.12 0.12 0.12 rg BT /F1 8 Tf 1 0 0 1 78 703 Tm (LUKS Mobil - Arbeitsprotokoll) Tj ET",
     "0.12 0.12 0.12 rg 0.4 w 78 700 m 255 700 l S",
-    "0 0 0 rg BT /F1 12 Tf 1 0 0 1 385 675 Tm (Landschaft und Kommunalservice) Tj ET",
-    "0 0 0 rg BT /F1 12 Tf 1 0 0 1 512 660 Tm (Schuler) Tj ET",
-    "0 0 0 rg BT /F1 12 Tf 1 0 0 1 483 645 Tm (Neubergstr. 7) Tj ET",
-    "0 0 0 rg BT /F1 12 Tf 1 0 0 1 463 631 Tm (72379 Hechingen) Tj ET",
-    "0 0 0 rg BT /F1 12 Tf 1 0 0 1 441 616 Tm (Tel.: +49 162 5319003) Tj ET",
-    "0 0 0 rg BT /F1 12 Tf 1 0 0 1 423 601 Tm (E-Mail: info-luks@web.de) Tj ET"
+    "0 0 0 rg BT /F1 12 Tf 1 0 0 1 385 675 Tm (Arbeitsprotokoll) Tj ET"
   ];
   let y = pageNumber === 1 ? 665 : 720;
   lines.forEach((line) => {
@@ -1207,16 +1213,7 @@ function pdfPageContent(lines, pageNumber, pageCount, hasLogo) {
     y -= Number(line.size) + 5;
   });
   commands.push("0.6 G 0.35 w 74 115 m 525 115 l S");
-  commands.push("0.1 0.1 0.1 rg BT /F1 10 Tf 1 0 0 1 76 89 Tm (Kontakt) Tj ET");
-  commands.push("0.1 0.1 0.1 rg BT /F1 10 Tf 1 0 0 1 252 89 Tm (Bankverbindung) Tj ET");
-  commands.push("0.1 0.1 0.1 rg BT /F1 10 Tf 1 0 0 1 402 89 Tm (Steuer-Nr.: 53845/40010) Tj ET");
-  commands.push("0.1 0.1 0.1 rg BT /F1 10 Tf 1 0 0 1 76 77 Tm (Rick Schuler) Tj ET");
-  commands.push("0.1 0.1 0.1 rg BT /F1 10 Tf 1 0 0 1 252 77 Tm (Sparkasse Zollernalb) Tj ET");
-  commands.push("0.1 0.1 0.1 rg BT /F1 10 Tf 1 0 0 1 402 77 Tm (USt.IdNr.: DE461645921) Tj ET");
-  commands.push("0.1 0.1 0.1 rg BT /F1 10 Tf 1 0 0 1 76 65 Tm (Tel.: +49 162 5319003) Tj ET");
-  commands.push("0.1 0.1 0.1 rg BT /F1 10 Tf 1 0 0 1 252 65 Tm (IBAN: DE38653512600134081593) Tj ET");
-  commands.push("0.1 0.1 0.1 rg BT /F1 10 Tf 1 0 0 1 76 53 Tm (E-Mail: info-luks@web.de) Tj ET");
-  commands.push("0.1 0.1 0.1 rg BT /F1 10 Tf 1 0 0 1 252 53 Tm (BIC: SOLADES1BAL) Tj ET");
+  commands.push("0.1 0.1 0.1 rg BT /F1 10 Tf 1 0 0 1 76 89 Tm (Erstellt mit LUKS Mobil) Tj ET");
   commands.push("0.45 0.45 0.45 rg BT /F1 8 Tf 1 0 0 1 508 29 Tm (Seite " + pageNumber + " von " + pageCount + ") Tj ET");
   return commands.join("\n");
 }
@@ -1492,6 +1489,8 @@ async function exportBackup() {
   link.download = `luks-arbeitsprotokolle-${today()}.json`;
   link.click();
   URL.revokeObjectURL(url);
+  localStorage.setItem(BACKUP_KEY, new Date().toISOString());
+  renderBackupStatus();
   showToast("Sicherung wurde heruntergeladen");
 }
 
@@ -1513,6 +1512,8 @@ function importBackup(file) {
         await loadActivities();
       }
       saveData("Sicherung eingespielt");
+      localStorage.setItem(BACKUP_KEY, new Date().toISOString());
+      renderBackupStatus();
     } catch (_) { showToast("Diese Datei ist keine gültige LUKS-Sicherung"); }
   };
   reader.readAsText(file);
